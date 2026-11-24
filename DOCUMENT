@@ -1,0 +1,665 @@
+# Guía de uso de IA para desarrollo ABAP
+## Comunidad ABAP Develop — [NOMBRE DEL EQUIPO]
+
+| Campo | Valor |
+|---|---|
+| Estado | Borrador pendiente de validación comunitaria |
+| Versión | 0.1.0 |
+| Fecha de creación | 2026-10-18 |
+| Equipo | [NOMBRE DEL EQUIPO] |
+| Entorno de referencia | SAP ERP 6.0 EHP7, SAP HANA 2.0, ABAP 7.40 como referencia |
+| Herramienta | Copilot Local, según la configuración aprobada por el equipo |
+| Documento relacionado | `.github/copilot-instructions.md` |
+
+> **Regla de aprobación de esta guía:** cualquier cambio que se publique debe haber sido probado y aceptado por, como mínimo, dos miembros de la comunidad. Una propuesta probada por una sola persona no se considera aprobada.
+
+---
+
+## 1. Objetivo y contexto
+
+Esta guía define cómo utilizar la IA como apoyo al desarrollo ABAP cuando el entorno SAP disponible no ofrece una integración de IA completa dentro del ciclo de desarrollo.
+
+La versión de SAP HANA y del entorno ABAP disponible no permite utilizar la IA como una capacidad integral del sistema. No se prevé actualizar la plataforma para obtener esa integración porque el entorno se está quedando obsoleto. 
+
+Por ese motivo, la comunidad utilizará Copilot Local junto con pasos manuales adicionales:
+
+1. Preparar y acotar el contexto.
+2. Descargar o abrir localmente los objetos necesarios.
+3. Pedir a la IA un análisis antes de solicitar cambios.
+4. Autorizar expresamente la implementación.
+5. Validar el resultado en local y en el sistema SAP.
+6. Revisar, probar y documentar el cambio.
+
+La IA ayuda a analizar, diseñar, escribir, depurar, optimizar y documentar código. **No sustituye el conocimiento del sistema, la revisión humana, la activación en SAP, ABAP Unit, ATC, Code Inspector ni el procedimiento de transportes.**
+
+### 1.1 Compatibilidad técnica
+
+El repositorio toma como referencia:
+
+- SAP ERP 6.0 EHP7.
+- SAP HANA 2.0.
+- ABAP 7.40, salvo que la conexión al sistema confirme otra versión.
+- SAP_BASIS 740 SP27 y kernel 754 como referencia del entorno conocido.
+
+Antes de aceptar una solución, confirma en el sistema objetivo la versión exacta de `SAP_BASIS`, Support Package, sintaxis disponible, tipo de objeto, paquete, mandante, autorizaciones, volumen de datos y restricciones de transporte. No se debe introducir CDS, AMDP, SQLScript, sintaxis moderna o clases que requieran una versión superior sin comprobar la compatibilidad y documentar una alternativa.
+
+---
+
+## 2. Responsabilidad y límites
+
+### 2.1 Responsabilidad de la persona desarrolladora
+
+La última responsabilidad de que el código sea correcto, seguro y compatible es de la persona desarrolladora que lo incorpora al sistema. Antes de transportar o entregar un cambio, debe poder explicar:
+
+- Qué problema resuelve.
+- Qué comportamiento se espera.
+- Qué objetos y archivos se han modificado.
+- Qué supuestos se han utilizado.
+- Qué pruebas se han ejecutado realmente.
+- Qué riesgos o comprobaciones siguen pendientes.
+
+Que Copilot diga que una solución es correcta no constituye una prueba.
+
+### 2.2 Lo que no debe hacer la IA por su cuenta
+
+La IA no debe:
+
+- Inventar tablas, campos, estructuras DDIC, BAPI, clases, métodos, CDS, autorizaciones, notas SAP o customizing.
+- Crear o modificar objetos sin autorización explícita de la persona desarrolladora.
+- Cambiar firmas públicas, comportamiento funcional, transacciones, bloqueos o commits sin indicarlo y pedir confirmación.
+- Modificar objetos estándar de SAP directamente.
+- Introducir código sin que el archivo, el contexto y la dependencia correspondiente estén disponibles.
+- Recibir contraseñas, tokens, certificados, datos personales, datos de producción o información confidencial no autorizada.
+- Sustituir la comprobación de sintaxis, la activación, las pruebas o el análisis de rendimiento.
+
+Si falta información, la respuesta correcta es pedirla o declarar la incertidumbre, no completarla con una suposición.
+
+---
+
+## 3. Cómo interpretar el árbol virtual y el trabajo local
+
+En Visual Studio Code se puede visualizar un **árbol virtual** con la conexión, los paquetes y los objetos del sistema SAP. Ese árbol no equivale automáticamente a una carpeta local completa.
+
+Copilot Local solo puede utilizar como contexto el contenido que esté disponible en el entorno local de trabajo, principalmente:
+
+- Archivos abiertos en el editor.
+- Objetos descargados en la carpeta local.
+- Archivos relacionados que la persona haya puesto explícitamente a disposición de la herramienta.
+
+Ver un objeto en el árbol virtual no significa que la IA conozca su implementación. Si una clase, include, interfaz, estructura o configuración es necesaria para razonar sobre el cambio, debe abrirse o descargarse de forma autorizada. Siempre hay que acotar el conjunto de archivos para no enviar código innecesario.
+
+> **Importante:** esta guía presupone que se trabaja con Copilot Local. Si el archivo no está abierto ni descargado en local, no se debe afirmar que Copilot lo ha revisado.
+
+### 3.1 Regla de visibilidad
+
+Antes de cada conversación comprueba:
+
+- [ ] La carpeta local abierta es la correcta.
+- [ ] El archivo principal está abierto.
+- [ ] Están abiertos o descargados los includes, clases y dependencias imprescindibles.
+- [ ] No se han incluido datos sensibles.
+- [ ] La ruta local se conoce y se indica en el prompt cuando sea relevante.
+- [ ] El alcance está limitado al problema actual.
+
+---
+
+## 4. Flujo común de trabajo
+
+Utiliza este flujo en cualquier tarea de IA:
+
+### Paso 1. Definir el objetivo
+
+Escribe qué quieres conseguir, qué comportamiento debe mantenerse y cómo sabrás que el resultado es correcto.
+
+### Paso 2. Preparar el contexto
+
+Reúne únicamente los objetos necesarios. Indica la versión ABAP, el sistema, el tipo de objeto, la ruta local, el error observado, los datos de entrada y el resultado esperado.
+
+### Paso 3. Solicitar análisis antes de cambios
+
+Pide a Copilot que explique el problema, las suposiciones, las alternativas y las pruebas. En esta fase debe quedar claro que no puede editar archivos.
+
+### Paso 4. Revisar y autorizar
+
+Lee la respuesta, comprueba que no inventa dependencias y decide si aceptas el plan. La autorización debe ser explícita y limitada a los archivos y métodos indicados.
+
+### Paso 5. Implementar el cambio mínimo
+
+Pide un diff pequeño. No aceptes una refactorización general para solucionar un problema concreto. Mantén las firmas, validaciones, autorizaciones, bloqueos, commits, mensajes y comportamiento transaccional existentes salvo requisito contrario.
+
+### Paso 6. Validar
+
+Revisa el diff, activa el objeto, ejecuta las pruebas y utiliza ATC o Code Inspector cuando corresponda. Registra qué comprobaciones se han ejecutado y cuáles no están disponibles.
+
+### Paso 7. Documentar y versionar
+
+Anota el objetivo, los archivos afectados, las pruebas, los riesgos y el transporte. Crea un commit pequeño y revisable cuando el procedimiento del equipo lo permita.
+
+---
+
+## 5. Estructura recomendada de un prompt
+
+Un prompt útil debe incluir, en este orden:
+
+1. **Rol y contexto:** ABAP, sistema y versión conocida.
+2. **Objetivo:** qué se quiere analizar o conseguir.
+3. **Evidencia:** archivo, método, ruta, error, entrada y salida real.
+4. **Restricciones:** alcance, compatibilidad y objetos que no se pueden modificar.
+5. **Modo de trabajo:** análisis sin cambios o implementación autorizada.
+6. **Formato de respuesta:** plan, riesgos, diff, pruebas y archivos afectados.
+7. **Criterio de parada:** qué debe hacer la IA si falta información o detecta una incompatibilidad.
+
+### 5.1 Prefijo común recomendado
+
+Se puede adaptar este bloque a cualquier prompt:
+
+```text
+Trabaja como asistente de desarrollo ABAP para el entorno autorizado por el equipo.
+Usa como referencia la compatibilidad ABAP 7.40 y confirma cualquier dependencia
+posterior. Lee y respeta las instrucciones de .github/copilot-instructions.md.
+
+No inventes objetos DDIC, tablas, campos, APIs, autorizaciones ni datos del sistema.
+Si falta una definición, indícalo y pide la información necesaria. No modifiques
+ningún archivo ni objeto SAP hasta que te lo autorice expresamente.
+Devuelve siempre los archivos afectados, los supuestos, los riesgos y las pruebas
+que deben ejecutarse.
+```
+
+---
+
+# 6. Debug: revisar y localizar problemas en el código
+
+## 6.1 Qué significa debug en esta guía
+
+Debug consiste en revisar el código y razonar sobre una diferencia entre el comportamiento esperado y el comportamiento real. La IA puede ayudar a localizar hipótesis, pero no puede observar el estado de ejecución de SAP si no se le proporcionan datos verificables.
+
+Antes de preguntar a Copilot, intenta describir:
+
+- Qué debería hacer el programa.
+- Qué hace realmente.
+- Con qué datos se reproduce.
+- En qué método, línea o momento parece producirse.
+- Qué hipótesis tienes.
+- Qué resultado esperas obtener de la revisión.
+
+## 6.2 Procedimiento
+
+1. Abre en local el fichero ABAP y las dependencias imprescindibles.
+2. Anota el error, el resultado esperado, el resultado real y los datos de prueba anonimizados.
+3. Pide primero un análisis sin modificar archivos.
+4. Comprueba cada hipótesis en el código y, si es necesario, en el depurador de SAP.
+5. Decide si la causa está demostrada o si todavía falta evidencia.
+6. Solo después autoriza una corrección limitada.
+7. Ejecuta las pruebas de regresión y documenta la causa, no solo el cambio.
+
+## 6.3 Prompt de ejemplo para depurar un fichero ABAP
+
+Sustituye los textos entre corchetes por datos reales y no incluyas secretos:
+
+```text
+Quiero revisar un problema en el fichero ABAP local:
+[RUTA_LOCAL_DEL_FICHERO]
+
+Objeto y método:
+[OBJETO_ABAP] / [MÉTODO_O_INCLUDE]
+
+Contexto confirmado:
+- Sistema: [SISTEMA]
+- SAP_BASIS y Support Package: [VERSIÓN_CONFIRMADA]
+- Release ABAP: [VERSIÓN_CONFIRMADA]
+- Tipo de objeto: [CLASE, INCLUDE, PROGRAMA, FUNCIÓN, ETC.]
+- Paquete y mandante: [DATOS_NO_SENSIBLES]
+
+Comportamiento esperado:
+[DESCRIBE CONCRETAMENTE EL RESULTADO CORRECTO]
+
+Comportamiento real:
+[DESCRIBE EL RESULTADO OBSERVADO]
+
+Datos de reproducción anonimizados:
+[ENTRADAS, CONDICIONES Y RESULTADO]
+
+Líneas o métodos sospechosos:
+[REFERENCIAS SI LAS HAY]
+
+Modo de trabajo:
+No modifiques ningún archivo. No escribas una solución todavía.
+1. Resume el flujo del código relevante.
+2. Enumera las hipótesis ordenadas por evidencia y señala las líneas relacionadas.
+3. Indica qué información o prueba falta para confirmar cada hipótesis.
+4. Revisa errores de lógica, sy-subrc, valores iniciales, conversiones,
+   autorizaciones, bloqueos, commits y tratamiento de excepciones si aplican.
+5. Propón la corrección mínima y las pruebas de regresión, pero espera mi
+   autorización antes de modificar nada.
+No inventes tablas, campos, APIs ni comportamiento del sistema SAP.
+```
+
+Después de leer la respuesta, pide una corrección únicamente si puedes confirmar la causa. Cuando la autorices, incluye explícitamente los archivos y métodos que se pueden modificar.
+
+## 6.4 Debug línea a línea en SAP
+
+Si se necesita observar el programa línea a línea, la comprobación debe hacerse en el depurador de SAP, no simulando la ejecución únicamente desde Copilot:
+
+1. Reproduce el caso en un sistema de desarrollo o pruebas autorizado.
+2. Coloca un breakpoint en el método o línea relevante. Utiliza breakpoint externo o de sesión según el tipo de ejecución y las autorizaciones disponibles.
+3. Avanza con el depurador paso a paso (`F5`, `F6`, `F7` y `F8` según la herramienta y la operación deseada).
+4. Observa los valores de entrada, las tablas internas, `sy-subrc`, fechas, horas, conversiones y excepciones.
+5. Registra solo los valores necesarios y anonimizados.
+6. Comparte con Copilot el fragmento de código y la evidencia relevante, no una captura con datos sensibles.
+7. Compara la hipótesis de la IA con el resultado real del depurador.
+
+La IA puede ayudar a interpretar una traza, pero no debe presentarla como una ejecución real si no se ha obtenido en SAP.
+
+---
+
+# 7. New code: crear código desde cero
+
+Crear código desde cero requiere separar diseño, autorización, creación de objetos e implementación.
+
+## 7.1 Procedimiento obligatorio
+
+1. **Preparar un prompt de diseño.** Pide a Copilot la estructura necesaria, no el código final.
+2. **Esperar la propuesta.** La IA no debe crear objetos ni archivos en esta fase.
+3. **Revisar la estructura.** Comprueba nombres, responsabilidades, dependencias, DDIC, autorizaciones y compatibilidad.
+4. **Autorizar la creación.** Decide qué estructura se acepta y créala en SAP con el namespace `Z` o `Y`, paquete y transporte adecuados.
+5. **Abrir o descargar los objetos.** Pon en local los archivos que Copilot debe conocer.
+6. **Autorizar la implementación.** Indica en el mismo chat qué archivos y métodos puede modificar y exige que respete `.github/copilot-instructions.md`.
+7. **Revisar y activar.** Comprueba el diff y la sintaxis en el sistema SAP.
+8. **Crear y ejecutar ABAP Unit.** Cubre casos normales, errores, límites, entradas vacías y duplicados cuando sean relevantes.
+9. **Documentar.** Registra el contrato, los objetos, las pruebas, las autorizaciones y el transporte.
+
+> **Puerta de autorización:** pedir una estructura no autoriza a crearla. Crear la estructura en SAP no autoriza a Copilot a implementar todos los archivos. Cada fase necesita una autorización explícita.
+
+## 7.2 Prompt de ejemplo para diseñar una solución ABAP
+
+```text
+Quiero diseñar una solución ABAP para este problema:
+[DESCRIPCIÓN FUNCIONAL]
+
+Entradas:
+[ENTRADAS Y TIPOS CONFIRMADOS]
+
+Salidas y comportamiento esperado:
+[SALIDAS, VALIDACIONES Y ERRORES]
+
+Contexto confirmado:
+- SAP ERP/EHP: [DATO]
+- SAP_BASIS y Support Package: [DATO]
+- Release ABAP: [DATO]
+- Volumen aproximado: [DATO]
+- Tipo de objeto permitido: [CLASE, FUNCIÓN, PROGRAMA, ETC.]
+- Paquete, mandante y autorizaciones disponibles: [DATO]
+
+Antes de escribir código o crear archivos, entrega solamente:
+1. La estructura de objetos que propones.
+2. La responsabilidad de cada objeto y método.
+3. Los tipos DDIC o estructuras que necesitas, únicamente si están confirmados.
+4. Las dependencias, validaciones, autorizaciones, bloqueos y control transaccional.
+5. Las alternativas consideradas y la opción recomendada.
+6. Los casos de ABAP Unit que deberían existir.
+7. Las preguntas que debo responder antes de crear nada.
+
+No crees ni modifiques objetos. No inventes nombres de tablas, campos, APIs ni
+clases. Usa compatibilidad ABAP 7.40 salvo confirmación distinta. Espera mi
+autorización explícita antes de proponer una implementación.
+```
+
+## 7.3 Prompt de implementación después de la autorización
+
+```text
+Autorizo la implementación de la estructura aprobada en estos archivos locales:
+- [RUTA/ARCHIVO_1]
+- [RUTA/ARCHIVO_2]
+
+Implementa únicamente [MÉTODOS O ALCANCE AUTORIZADO].
+
+Respeta:
+- Las instrucciones de .github/copilot-instructions.md.
+- Las firmas y el contrato aprobados.
+- La compatibilidad ABAP [VERSIÓN CONFIRMADA].
+- Las validaciones, autorizaciones, bloqueos, mensajes y control transaccional existentes.
+- El namespace y las convenciones del proyecto.
+
+Antes de modificar, resume en un máximo de cinco puntos qué vas a cambiar.
+Después entrega el diff mínimo y la lista exacta de archivos afectados.
+No reescribas archivos no relacionados, no inventes dependencias y no cambies
+interfaces públicas sin detenerte y pedir autorización adicional.
+Incluye una estrategia de ABAP Unit y separa las pruebas propuestas de las
+pruebas que se hayan ejecutado realmente.
+```
+
+---
+
+# 8. Optimizar código
+
+## 8.1 Descripción
+
+La optimización parte de un código que funciona y pretende mejorar rendimiento, claridad o mantenibilidad sin cambiar el comportamiento. No se debe aceptar una optimización solo porque el código parezca más moderno o más corto.
+
+## 8.2 Procedimiento
+
+1. Abre el código y las pruebas relacionadas en local.
+2. Ejecuta o registra un baseline: tiempo, volumen, lecturas, memoria o métrica disponible.
+3. Pide a Copilot un análisis sin modificar el archivo.
+4. Solicita varias alternativas con ventajas, riesgos, compatibilidad y coste.
+5. Comprueba que la propuesta no cambia reglas de negocio, orden, duplicados, autorizaciones o transacciones.
+6. Autoriza una única optimización acotada.
+7. Revisa el diff y ejecuta las mismas pruebas que antes.
+8. Mide de nuevo con datos representativos.
+9. Conserva la optimización solo si la mejora está demostrada y la mantenibilidad sigue siendo aceptable.
+
+Para acceso a datos, comprueba especialmente que no se introduzcan `SELECT` dentro de bucles sin justificación, `SELECT *`, `FOR ALL ENTRIES` sobre una tabla vacía, SQL dinámico sin lista blanca o una estrategia específica de HANA sin medición.
+
+## 8.3 Prompt de ejemplo
+
+```text
+Analiza el código abierto en:
+[RUTA_LOCAL]
+
+Objeto y método:
+[OBJETO / MÉTODO]
+
+El comportamiento funcional actual debe mantenerse exactamente.
+Métrica baseline:
+- Volumen: [DATO]
+- Tiempo: [DATO]
+- Otras métricas: [DATO]
+
+Problema observado o motivo de revisión:
+[DESCRIPCIÓN]
+
+No modifiques archivos todavía. Entrega:
+1. El flujo actual y los posibles cuellos de botella.
+2. Las optimizaciones posibles ordenadas por impacto y riesgo.
+3. Las implicaciones para ABAP 7.40, Open SQL, HANA, autorizaciones,
+   bloqueos, commits y memoria.
+4. Cómo demostrarías la mejora con una medición reproducible.
+5. El diff mínimo recomendado y los casos de regresión.
+
+No afirmes que una opción es más rápida sin una medición o una justificación
+verificable. No inventes índices, tablas, campos ni APIs. Espera mi autorización
+antes de cambiar el código.
+```
+
+---
+
+# 9. BUG: corregir un error funcional
+
+## 9.1 Ejemplo de incidencia
+
+Un ejemplo de BUG puede ser detectar que la hora de inserción de los datos no coincide con la hora esperada. La causa puede estar en el origen del timestamp, la zona horaria, la conversión, el momento de la actualización, la configuración o la interpretación del dato. No se debe elegir una causa sin comprobarla.
+
+## 9.2 Procedimiento para un BUG
+
+1. **Acotar en el árbol virtual.** Con el botón derecho, descarga únicamente los objetos y clases relacionados con el error. Incluye dependencias necesarias y evita descargar un paquete completo si no es necesario.
+2. **Preparar el contexto local.** Indica a Copilot la ruta de la carpeta, el objeto principal, el flujo, los datos anonimizados, el resultado esperado, el resultado real, la hora observada, el sistema, el mandante y los pasos para reproducirlo.
+3. **Pedir análisis.** Solicita causa probable, evidencia, información faltante, alternativas y archivos afectados. No pidas todavía que cambie el código.
+4. **Autorizar de forma limitada.** Si estás de acuerdo con el diagnóstico, pide un plan de cambio y autoriza únicamente los archivos y métodos indicados. La IA debe enumerar los archivos afectados antes de modificar.
+5. **Aplicar el cambio.** Abre en local todos los archivos afectados desde el árbol virtual y pide que aplique únicamente el cambio aprobado en esa carpeta.
+6. **Crear y ejecutar la prueba.** Añade un ABAP Unit que reproduzca el defecto y pruebe el comportamiento correcto. Ejecuta primero las comprobaciones locales disponibles y después activa y ejecuta la prueba en el sistema virtual/SAP.
+7. **Revisar la regresión.** Ejecuta también las pruebas existentes, revisa el diff, la activación, ATC o Code Inspector y el impacto en transportes.
+8. **Eliminar la copia local.** Cuando el cambio esté revisado, probado, versionado y no queden trabajos pendientes, elimina la carpeta local descargada si la política del equipo lo exige. No borres el objeto del sistema SAP ni la única copia de una evidencia necesaria. Si se necesita conservarla, archívala solo con autorización y sin datos sensibles.
+
+### 9.2.1 Particularidades de un error de hora de inserción
+
+Antes de cambiar el código, comprueba:
+
+- Qué componente origina la fecha y hora: aplicación, base de datos, interfaz u otro proceso.
+- Qué zona horaria utiliza el proceso y cuál espera el negocio.
+- Si se está convirtiendo entre hora local y UTC.
+- El tipo y formato del campo, sin inventar su definición DDIC.
+- El momento de la inserción respecto a actualización, update task o commit.
+- Si el defecto ocurre solo para un usuario, mandante, sistema, horario o volumen.
+- Si existe una prueba de límite alrededor del cambio de día, horario de verano o cambio de zona horaria.
+
+## 9.3 Prompt de ejemplo para analizar el BUG
+
+```text
+Tengo un BUG funcional en la carpeta local:
+[RUTA_LOCAL_DE_LA_CARPETA]
+
+Objeto principal:
+[OBJETO_ABAP]
+
+Objetos relacionados descargados y disponibles:
+- [ARCHIVO / OBJETO 1]
+- [ARCHIVO / OBJETO 2]
+- [ARCHIVO / OBJETO 3]
+
+Problema:
+La hora de inserción observada es [RESULTADO REAL], pero el negocio espera
+[RESULTADO ESPERADO].
+
+Reproducción:
+1. [PASO 1]
+2. [PASO 2]
+3. [PASO 3]
+
+Contexto confirmado:
+- Sistema y mandante: [DATO NO SENSIBLE]
+- SAP_BASIS, Support Package y release ABAP: [DATO]
+- Usuario/zona horaria anonimizada: [DATO NECESARIO]
+- Entrada y momento de la prueba: [DATO]
+- Mensaje, dump o resultado de depuración: [DATO ANONIMIZADO]
+
+No modifiques nada todavía. Analiza primero:
+1. El flujo que calcula, convierte y guarda la fecha/hora.
+2. Las hipótesis ordenadas por evidencia.
+3. Qué datos faltan para confirmar la causa.
+4. Los riesgos de cambiar el origen o la zona horaria.
+5. Los archivos y métodos que tendrían que cambiarse.
+6. Una prueba ABAP Unit que reproduzca el defecto y otra que demuestre la corrección.
+
+No inventes el tipo del campo, tablas, APIs ni configuración. Si la causa no
+puede demostrarse con los archivos disponibles, dilo claramente.
+```
+
+## 9.4 Prompt de aplicación después de aceptar el diagnóstico
+
+```text
+Acepto el diagnóstico [RESUMEN DEL DIAGNÓSTICO] y autorizo únicamente estos cambios:
+- Archivo: [RUTA], método: [MÉTODO], cambio: [ALCANCE]
+- Archivo de prueba: [RUTA], prueba: [NOMBRE], cambio: [ALCANCE]
+
+Aplica el cambio en la carpeta local indicada. No modifiques otros archivos.
+Mantén las firmas, validaciones, autorizaciones, bloqueos, commits y mensajes
+existentes salvo que el diagnóstico aprobado indique lo contrario.
+
+Antes de editar, confirma la lista de archivos afectados. Después entrega:
+- La causa corregida y la evidencia utilizada.
+- El diff mínimo.
+- Las pruebas nuevas y las pruebas de regresión.
+- Las comprobaciones que has ejecutado realmente y las que quedan pendientes.
+- Los riesgos y la verificación necesaria en SAP.
+```
+
+---
+
+# 10. Unit test y ABAP Unit
+
+Todo cambio de lógica debe tener una estrategia de prueba. La plantilla reutilizable se encuentra en [`../unit_test/Plantilla_ABAP_Unit_reutilizable.md`](../unit_test/Plantilla_ABAP_Unit_reutilizable.md).
+
+## 10.1 Reglas mínimas
+
+- Define el contrato antes de escribir la prueba.
+- Aísla la lógica de negocio de base de datos, RFC, servicios externos y reloj cuando sea posible.
+- Incluye casos normales, entradas vacías, límites, errores, duplicados y valores extremos cuando apliquen.
+- Comprueba tanto el resultado como los efectos secundarios: filas creadas, actualizadas o no modificadas.
+- No uses datos reales de producción.
+- No marques una prueba como ejecutada porque la IA la haya propuesto.
+- Mantén las pruebas deterministas y repetibles.
+
+## 10.2 Orden de ejecución local y virtual
+
+1. Ejecuta primero las comprobaciones disponibles en la copia local: revisión estática, parser, tests o runner aprobado por el equipo.
+2. Si no existe un runtime ABAP local, deja constancia de que la ejecución local fue una revisión o comprobación estática; no la presentes como ABAP Unit real.
+3. Abre o activa los objetos en el sistema SAP mediante el árbol virtual o la herramienta autorizada.
+4. Ejecuta ABAP Unit en SAP y registra el resultado.
+5. Repite las pruebas de regresión y conserva la evidencia requerida.
+
+---
+
+# 11. Documentar el cambio
+
+Después de un debug, una creación, una optimización o un BUG, documenta al menos:
+
+- Objetivo y contexto.
+- Comportamiento anterior y posterior.
+- Objetos y archivos afectados.
+- Dependencias y supuestos confirmados.
+- Compatibilidad ABAP y restricciones del sistema.
+- Autorizaciones, bloqueos y comportamiento transaccional revisados.
+- Pruebas propuestas y pruebas ejecutadas realmente.
+- Resultado de activación, ABAP Unit, ATC o Code Inspector.
+- Medición antes y después si se optimizó rendimiento.
+- Riesgos, limitaciones y plan de reversión.
+- Transporte, rama, commit o pull request relacionado.
+- Fecha y personas que revisaron el cambio según la política del equipo.
+
+### 11.1 Prompt de ejemplo para documentar
+
+```text
+Documenta el cambio realizado en estos archivos:
+[LISTA DE ARCHIVOS]
+
+Objetivo:
+[OBJETIVO]
+
+Comportamiento anterior:
+[DESCRIPCIÓN]
+
+Comportamiento posterior:
+[DESCRIPCIÓN]
+
+Pruebas ejecutadas realmente y resultado:
+[LISTA]
+
+Comprobaciones pendientes:
+[LISTA]
+
+Genera una documentación breve con:
+1. Resumen funcional.
+2. Alcance y elementos fuera de alcance.
+3. Objetos afectados.
+4. Compatibilidad y dependencias confirmadas.
+5. Pruebas y evidencias.
+6. Riesgos, autorizaciones, bloqueos y commits.
+7. Pasos de verificación en SAP.
+
+No inventes resultados de pruebas ni datos del sistema. Distingue siempre entre
+una prueba propuesta y una prueba ejecutada.
+```
+
+---
+
+# 12. Lista de comprobación antes de cerrar una tarea
+
+## Contexto y seguridad
+
+- [ ] Se ha definido el objetivo y el resultado esperado.
+- [ ] Solo se han abierto o descargado los archivos necesarios.
+- [ ] Se ha indicado la ruta local cuando era relevante.
+- [ ] Se han eliminado credenciales, tokens, datos personales y datos de producción.
+- [ ] Se ha confirmado la versión ABAP y la compatibilidad.
+
+## Revisión del cambio
+
+- [ ] La IA recibió primero una petición de análisis cuando el cambio era relevante.
+- [ ] La autorización para modificar fue explícita y limitada.
+- [ ] Se ha revisado el diff completo.
+- [ ] No se han inventado objetos, APIs, campos o autorizaciones.
+- [ ] No se han modificado objetos estándar de SAP directamente.
+- [ ] Se han conservado validaciones, autorizaciones, bloqueos, commits y mensajes.
+- [ ] No hay código comentado innecesario, variables sin uso ni sentencias inalcanzables.
+
+## Validación técnica
+
+- [ ] Se ha realizado la comprobación de sintaxis o activación en SAP.
+- [ ] Se ha creado o actualizado ABAP Unit cuando corresponde.
+- [ ] Las pruebas se han ejecutado primero en local según las posibilidades reales.
+- [ ] Las pruebas se han ejecutado después en el sistema SAP o árbol virtual.
+- [ ] Se han ejecutado las pruebas de regresión.
+- [ ] Se ha ejecutado ATC o Code Inspector cuando corresponde.
+- [ ] Se ha medido el rendimiento antes y después si la tarea era una optimización.
+- [ ] Se han revisado mandante, autorizaciones, bloqueos y efectos transaccionales.
+
+## Entrega
+
+- [ ] La documentación distingue propuestas de resultados ejecutados.
+- [ ] Se han registrado los archivos, el transporte y el commit o pull request.
+- [ ] La carpeta local temporal se ha eliminado solo después de completar las comprobaciones.
+- [ ] El cambio está listo para revisión humana y no se transporta a producción sin autorización.
+
+---
+
+# 13. Registro de una sesión de trabajo
+
+Copia esta plantilla para dejar evidencia de una tarea:
+
+```text
+Fecha:
+Persona desarrolladora:
+Tipo de tarea: Debug / New code / Optimización / BUG / Unit test / Documentación
+Sistema y mandante:
+Versión ABAP y SAP_BASIS:
+Ruta local:
+Objetos y archivos visibles:
+
+Objetivo:
+
+Resultado esperado:
+
+Resultado observado:
+
+Prompt de análisis utilizado:
+
+Autorización concedida y alcance:
+
+Archivos modificados:
+
+Pruebas propuestas:
+
+Pruebas ejecutadas en local:
+
+Pruebas ejecutadas en SAP/árbol virtual:
+
+Activación, ATC o Code Inspector:
+
+Resultado final:
+
+Riesgos o pendientes:
+
+Commit, transporte o pull request:
+
+Revisión humana:
+```
+
+---
+
+# 14. Mantenimiento de esta guía
+
+La guía debe mejorar con la experiencia de la comunidad, pero no se puede modificar de forma informal.
+
+## Procedimiento para proponer un cambio
+
+1. Abrir una propuesta que explique el problema de la guía y el cambio solicitado.
+2. Probar el procedimiento con un caso reproducible.
+3. Hacer que un segundo miembro de la comunidad pruebe el mismo procedimiento de forma independiente.
+4. Recoger la evidencia, las limitaciones y las diferencias encontradas.
+5. Obtener la aceptación explícita de ambos miembros.
+6. Actualizar la versión, el registro de cambios y la fecha.
+7. Incorporar el cambio mediante revisión del diff y un commit con una única intención.
+
+Si los dos miembros no han probado y aceptado el cambio, el estado debe permanecer como propuesta pendiente. La aprobación de un cambio de esta guía no sustituye las autorizaciones del desarrollo ABAP ni las validaciones exigidas por SAP.
+
+## Registro de cambios
+
+| Versión | Fecha | Cambio | Prueba miembro 1 | Prueba miembro 2 | Aceptación | Estado |
+|---|---|---|---|---|---|---|
+| 0.1.0 | 2026-10-18 | Borrador inicial de la guía y prompts | Pendiente | Pendiente | Pendiente | En validación |
+
+---
+
+## Regla final
+
+La IA puede acelerar el trabajo, pero no transfiere la responsabilidad. **La persona desarrolladora debe entender, revisar, probar y aprobar el código antes de incorporarlo al sistema SAP o al repositorio.**
